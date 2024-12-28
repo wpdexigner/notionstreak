@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streak Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+    <style>
+        .fire {
+            animation: fire 2s infinite;
+        }
+
+        @keyframes fire {
+            0% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        .progress-bar {
+            transition: width 1s ease-in-out;
+        }
+
+        .bounce {
+            animation: bounce 0.5s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
+</head>
+<body class="bg-[#F7F7F7] dark:bg-[#191919] transition duration-500">
+    <div class="max-w-sm mx-auto p-4 mt-8 bg-white dark:bg-[#2F3437] rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] relative">
+        <!-- Header Section -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold text-[#37352F] dark:text-[#FFFFFF]">Streak</h2>
+                <i class="fa-solid fa-fire text-[#E16259] text-lg fire"></i>
+            </div>
+            <a href="#" class="text-[#787774] hover:text-[#37352F] dark:hover:text-[#FFFFFF] cursor-pointer transition-colors" onclick="openModal()">
+                <i class="fa-solid fa-pencil"></i>
+            </a>
+        </div>
+
+        <!-- Streak Counter Section -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="text-center p-3 bg-[#F7F7F7] dark:bg-[#363B3D] rounded-lg">
+                <p class="text-xs text-[#787774] dark:text-[#999999] mb-1">Current Streak</p>
+                <p class="text-3xl font-bold text-[#37352F] dark:text-[#FFFFFF]" id="current-streak">0</p>
+            </div>
+            <div class="text-center p-3 bg-[#F7F7F7] dark:bg-[#363B3D] rounded-lg">
+                <p class="text-xs text-[#787774] dark:text-[#999999] mb-1">Longest Streak</p>
+                <p class="text-3xl font-bold text-[#37352F] dark:text-[#FFFFFF]" id="longest-streak">0</p>
+            </div>
+        </div>
+
+        <!-- Progress Bar Section -->
+        <div class="mb-4">
+            <div class="h-1.5 bg-[#F7F7F7] dark:bg-[#363B3D] rounded-full relative overflow-hidden">
+                <div class="h-1.5 bg-[#E16259] rounded-full progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div class="space-y-1">
+            <p class="text-xs text-[#787774] dark:text-[#999999]" id="streak-message">You haven't started your streak yet!</p>
+            <p class="text-xs text-[#787774] dark:text-[#999999]" id="streak-type">Currently tracking: Exercise Streak</p>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 hidden" id="edit-streak-modal">
+        <div class="max-w-md mx-auto mt-24 p-6 bg-white dark:bg-[#2F3437] rounded-lg shadow-lg">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-[#37352F] dark:text-[#FFFFFF]">Edit Streak</h2>
+                <a href="#" class="text-[#787774] hover:text-[#37352F] dark:hover:text-[#FFFFFF] cursor-pointer transition-colors" onclick="closeModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+            <form id="edit-streak-form" onsubmit="saveChanges(event)">
+                <div class="mb-6">
+                    <label for="streak-name-input" class="block text-sm font-medium text-[#787774] dark:text-[#999999] mb-2">Streak Name</label>
+                    <input type="text"
+                           id="streak-name-input"
+                           class="w-full p-3 bg-[#F7F7F7] dark:bg-[#363B3D] border border-[#E9E9E8] dark:border-[#424657] rounded-lg focus:ring-2 focus:ring-[#E16259] focus:border-transparent transition-all text-[#37352F] dark:text-[#FFFFFF]"
+                           value="Exercise Streak">
+                </div>
+                <button type="submit"
+                        class="w-full bg-[#E16259] hover:bg-[#C7574F] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        console.log('Edit button found:', !!document.getElementById('edit-streak-btn'));
+        console.log('Modal found:', !!document.getElementById('edit-streak-modal'));
+
+        const editStreakBtn = document.getElementById('edit-streak-btn');
+        const editStreakModal = document.getElementById('edit-streak-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const editStreakForm = document.getElementById('edit-streak-form');
+        const streakNameInput = document.getElementById('streak-name-input');
+        const currentStreakDisplay = document.getElementById('current-streak');
+        const longestStreakDisplay = document.getElementById('longest-streak');
+        const streakMessageDisplay = document.getElementById('streak-message');
+        const streakTypeDisplay = document.getElementById('streak-type');
+
+        let streakData = JSON.parse(localStorage.getItem('streakData')) || {
+            currentStreak: 1,
+            longestStreak: 1,
+            lastVisit: null,
+            streakType: 'Exercise Streak'
+        };
+
+        function updateStreak() {
+            const today = new Date().toISOString().split('T')[0];
+            const oldStreak = streakData.currentStreak;
+            
+            if (streakData.lastVisit !== today) {
+                if (streakData.lastVisit === null) {
+                    // First visit - start streak at 1
+                    streakData.currentStreak = 1;
+                    streakData.longestStreak = 1;
+                } else if (new Date(streakData.lastVisit).getTime() + 86400000 < new Date().getTime()) {
+                    // More than 24 hours have passed - reset streak
+                    streakData.currentStreak = 1; // Reset to 1 instead of 0 since they're visiting today
+                } else {
+                    // Consecutive day visit - increment streak
+                    streakData.currentStreak++;
+                    if (streakData.currentStreak > streakData.longestStreak) {
+                        streakData.longestStreak = streakData.currentStreak;
+                    }
+                }
+                streakData.lastVisit = today;
+                localStorage.setItem('streakData', JSON.stringify(streakData));
+            }
+            
+            currentStreakDisplay.textContent = streakData.currentStreak;
+            longestStreakDisplay.textContent = streakData.longestStreak;
+            
+            if (oldStreak !== streakData.currentStreak) {
+                currentStreakDisplay.classList.add('bounce');
+                setTimeout(() => currentStreakDisplay.classList.remove('bounce'), 500);
+            }
+            
+            streakTypeDisplay.textContent = `Currently tracking: ${streakData.streakType}`;
+            const progressWidth = (streakData.currentStreak / streakData.longestStreak) * 100;
+            
+            // Ensure the progress bar shows some progress even at the start
+            const minProgress = streakData.currentStreak > 0 ? 5 : 0; // Show at least 5% if streak has started
+            const finalProgress = Math.max(minProgress, progressWidth);
+            
+            document.querySelector('.progress-bar').style.width = `${finalProgress}%`;
+            
+            // Update message based on streak
+            if (streakData.currentStreak === 0) {
+                streakMessageDisplay.textContent = 'You haven\'t started your streak yet!';
+            } else {
+                streakMessageDisplay.textContent = `You've been on a roll for ${streakData.currentStreak} day${streakData.currentStreak === 1 ? '' : 's'}!`;
+            }
+        }
+
+        updateStreak();
+
+        function openModal() {
+            document.getElementById('edit-streak-modal').classList.remove('hidden');
+            document.getElementById('streak-name-input').value = streakData.streakType;
+        }
+
+        function closeModal() {
+            document.getElementById('edit-streak-modal').classList.add('hidden');
+        }
+
+        // Event Listeners
+        document.getElementById('close-modal').onclick = closeModal;
+
+        // Close on outside click
+        document.getElementById('edit-streak-modal').onclick = function(e) {
+            if (e.target === this) closeModal();
+        };
+
+        // Form submission
+        function saveChanges(e) {
+            e.preventDefault();
+            streakData.streakType = document.getElementById('streak-name-input').value;
+            localStorage.setItem('streakData', JSON.stringify(streakData));
+            updateStreak();
+            closeModal();
+        }
+
+        // Also add a check for z-index on the modal
+        const modalStyle = `
+            <style>
+                #edit-streak-modal {
+                    z-index: 50;
+                }
+            </style>
+        `;
+        document.head.insertAdjacentHTML('beforeend', modalStyle);
+
+        // Add console logs to debug
+        console.log('Modal functionality initialized');
+    </script>
+</body>
+</html>
